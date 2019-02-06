@@ -36,5 +36,5 @@ dependencies {
         exclude group: 'com.squareup.okhttp3', module: 'okhttp'
     }
     implementation 'com.squareup.okhttp3:okhttp:3.12.1'
-implementation 'com.danikula:videocache:2.7.1'
+    implementation 'com.danikula:videocache:2.7.1'
 }
