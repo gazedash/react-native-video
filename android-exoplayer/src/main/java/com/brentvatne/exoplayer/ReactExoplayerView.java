@@ -301,7 +301,10 @@ class ReactExoplayerView extends FrameLayout implements
             case C.TYPE_HLS:
                 return new HlsMediaSource(uri, mediaDataSourceFactory, new DefaultExtractorsFactory().
                 setTsExtractorFlags(
-                     DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS, DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES 
+                     DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
+                     .setTsExtractorFlags(
+                     DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES 
+                     )
                 ), mainHandler, null);
             case C.TYPE_OTHER:
                 return new ExtractorMediaSource(uri, mediaDataSourceFactory, new DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true),
