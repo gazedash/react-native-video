@@ -31,6 +31,10 @@ import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.upstream.cache.CacheDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.SimpleCache;
+import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
+import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
@@ -146,6 +150,8 @@ class ReactExoplayerView extends FrameLayout implements
     private boolean disableFocus;
     private float mProgressUpdateInterval = 250.0f;
     private boolean playInBackground = false;
+    private final long cacheMaxSize = 100000000;
+
     private Map<String, String> requestHeaders;
     private boolean mReportBandwidth = false;
     // \ End props
@@ -175,23 +181,10 @@ class ReactExoplayerView extends FrameLayout implements
         }
     };
 
-    private final long cacheMaxSize = 100000000;
 
     private SimpleCache cache;
     private ConcatenatingMediaSource source;
     private boolean prepared = false;
-
-        @Override
-    public void initialize() {
-        if(cacheMaxSize > 0) {
-            File cacheDir = new File(context.getCacheDir(), "ReactNativeVideo");
-            cache = new SimpleCache(cacheDir, new LeastRecentlyUsedCacheEvictor(cacheMaxSize));
-        } else {
-            cache = null;
-        }
-
-        super.initialize();
-    }
 
     public DataSource.Factory enableCaching(DataSource.Factory ds) {
         if(cache == null || cacheMaxSize <= 0) return ds;
@@ -376,6 +369,12 @@ class ReactExoplayerView extends FrameLayout implements
     }
 
     private void initializePlayer() {
+                if(cacheMaxSize > 0) {
+            File cacheDir = new File(getContext().getCacheDir(), "ReactNativeVideo");
+            cache = new SimpleCache(cacheDir, new LeastRecentlyUsedCacheEvictor(cacheMaxSize));
+        } else {
+            cache = null;
+        }
         if (player == null) {
             TrackSelection.Factory videoTrackSelectionFactory = new AdaptiveTrackSelection.Factory(BANDWIDTH_METER);
             trackSelector = new DefaultTrackSelector(videoTrackSelectionFactory);
