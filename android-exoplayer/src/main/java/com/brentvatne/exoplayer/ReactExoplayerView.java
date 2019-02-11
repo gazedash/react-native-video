@@ -1,5 +1,6 @@
 package com.brentvatne.exoplayer;
 
+import java.io.*;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
@@ -39,6 +40,7 @@ import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.mediacodec.MediaCodecRenderer;
 import com.google.android.exoplayer2.mediacodec.MediaCodecUtil;
 import com.google.android.exoplayer2.metadata.Metadata;
+import com.google.android.exoplayer2.upstream.*;
 import com.google.android.exoplayer2.metadata.MetadataRenderer;
 import com.google.android.exoplayer2.source.BehindLiveWindowException;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
@@ -72,6 +74,8 @@ import java.net.CookiePolicy;
 import java.lang.Math;
 import java.util.Map;
 import java.lang.Object;
+import java.util.Arrays;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -383,8 +387,46 @@ class ReactExoplayerView extends FrameLayout implements
     }
 
     private MediaSource buildMediaSource(Uri uri, String overrideExtension) {
-        int type = Util.inferContentType(!TextUtils.isEmpty(overrideExtension) ? "." + overrideExtension
-                : uri.getLastPathSegment());
+        DataSource.Factory ds;
+        String userAgent = null;
+        if(userAgent == null || userAgent.isEmpty())
+            userAgent = DataSourceUtil.getUserAgent(themedReactContext);
+
+            try {
+                final RawResourceDataSource raw = new RawResourceDataSource(this.themedReactContext);
+                raw.open(new DataSpec(uri));
+                ds = new DataSource.Factory() {
+                    @Override
+                    public DataSource createDataSource() {
+                        return raw;
+                    }
+                };
+            } catch(IOException ex) {
+                // Should never happen
+                // throw new RuntimeException(ex);
+            }
+            // Creates a default http source factory, enabling cross protocol redirects
+            ds = new DefaultHttpDataSourceFactory(
+                    userAgent, null,
+                    DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS,
+                    DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS,
+                    true
+            );
+
+            // ds = playback.enableCaching(ds);
+
+
+        String type = "default";
+
+        String[] formats = new String[]{"dash", "hls", "smoothstreaming"};
+
+        // Convert String Array to List
+        List<String> list = Arrays.asList(formats);
+        System.out.println(overrideExtension);
+        if(list.contains(overrideExtension)){
+            type = overrideExtension;
+        }
+
         switch (type) {
             case C.TYPE_SS:
                 return new SsMediaSource(uri, buildDataSourceFactory(false),
@@ -402,9 +444,6 @@ class ReactExoplayerView extends FrameLayout implements
             case C.TYPE_OTHER:
                 return new ExtractorMediaSource(uri, mediaDataSourceFactory, new DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true),
                         mainHandler, null);
-            default: {
-                throw new IllegalStateException("Unsupported type: " + type);
-            }
         }
     }
 
@@ -846,8 +885,12 @@ class ReactExoplayerView extends FrameLayout implements
             boolean isOriginalSourceNull = srcUri == null;
             boolean isSourceEqual = uri.equals(srcUri);
 
-            // this.srcUri = uri;
-            this.srcUri = DataSourceUtil.getCacheUri(uri, themedReactContext);
+            this.srcUri = uri;
+            System.out.println(uri.toString());
+            // don't cache if it's hls
+            // if (uri.toString().startsWith("https")) {
+            // uri = DataSourceUtil.getCacheUri(uri, themedReactContext);
+            // }
             this.extension = extension;
             this.requestHeaders = headers;
             this.mediaDataSourceFactory = DataSourceUtil.getDefaultDataSourceFactory(this.themedReactContext, BANDWIDTH_METER, this.requestHeaders);
