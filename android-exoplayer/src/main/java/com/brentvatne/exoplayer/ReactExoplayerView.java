@@ -887,7 +887,7 @@ class ReactExoplayerView extends FrameLayout implements
 
             this.srcUri = uri;
             System.out.println(uri.toString());
-            if (extension != "dash" || extension != "hls")
+            if (extension != "dash" || extension != "hls") {
                 this.srcUri = DataSourceUtil.getCacheUri(uri, themedReactContext);
             }
             // don't cache if it's hls
