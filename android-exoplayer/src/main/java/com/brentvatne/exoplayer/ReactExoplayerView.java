@@ -458,7 +458,6 @@ class ReactExoplayerView extends FrameLayout implements
 
         ds = enableCaching(ds);
 
-
         String type = "default";
 
         String[] formats = new String[]{"dash", "hls", "smoothstreaming"};
@@ -930,7 +929,8 @@ class ReactExoplayerView extends FrameLayout implements
 
             this.srcUri = uri;
             System.out.println(uri.toString());
-            if (!extension.equals("dash") && !extension.equals("hls")) {
+            String uriStr = uri.toString();
+            if (!extension.equals("dash") && !extension.equals("hls") && !uriStr.startsWith("file")) {
                 this.srcUri = DataSourceUtil.getCacheUri(uri, themedReactContext);
             }
             // don't cache if it's hls
