@@ -10,6 +10,7 @@ static NSString *const statusKeyPath = @"status";
 static NSString *const playbackLikelyToKeepUpKeyPath = @"playbackLikelyToKeepUp";
 static NSString *const playbackBufferEmptyKeyPath = @"playbackBufferEmpty";
 static NSString *const readyForDisplayKeyPath = @"readyForDisplay";
+static NSString *const loadedTimeRangesKeyPath = @"loadedTimeRanges";
 static NSString *const playbackRate = @"rate";
 static NSString *const timedMetadata = @"timedMetadata";
 static NSString *const externalPlaybackActive = @"externalPlaybackActive";
@@ -48,6 +49,11 @@ static int const RCTVideoUnset = -1;
   Float64 _progressUpdateInterval;
   BOOL _controls;
   id _timeObserver;
+
+  /* For keeping track of buffer states */
+  BOOL _playbackStarted;
+  BOOL _seeked;
+  Float64 _previousTime;
   
   /* Keep track of any modifiers, need to be applied after each play */
   float _volume;
@@ -61,6 +67,7 @@ static int const RCTVideoUnset = -1;
   NSArray * _textTracks;
   NSDictionary * _selectedTextTrack;
   NSDictionary * _selectedAudioTrack;
+  NSDictionary * _bufferConfig;
   BOOL _playbackStalled;
   BOOL _playInBackground;
   BOOL _playWhenInactive;
@@ -265,15 +272,23 @@ static int const RCTVideoUnset = -1;
   
   [[NSNotificationCenter defaultCenter] postNotificationName:@"RCTVideo_progress" object:nil userInfo:@{@"progress": [NSNumber numberWithDouble: currentTimeSecs / duration]}];
   
-  if( currentTimeSecs >= 0 && self.onVideoProgress) {
-    self.onVideoProgress(@{
-                           @"currentTime": [NSNumber numberWithFloat:CMTimeGetSeconds(currentTime)],
-                           @"playableDuration": [self calculatePlayableDuration],
-                           @"atValue": [NSNumber numberWithLongLong:currentTime.value],
-                           @"atTimescale": [NSNumber numberWithInt:currentTime.timescale],
-                           @"target": self.reactTag,
-                           @"seekableDuration": [self calculateSeekableDuration],
-                           });
+  if( currentTimeSecs >= 0) {
+    _playbackStarted = YES;
+    if (self.onVideoProgress) {
+      self.onVideoProgress(@{
+                            @"currentTime": [NSNumber numberWithFloat:CMTimeGetSeconds(currentTime)],
+                            @"playableDuration": [self calculatePlayableDuration],
+                            @"atValue": [NSNumber numberWithLongLong:currentTime.value],
+                            @"atTimescale": [NSNumber numberWithInt:currentTime.timescale],
+                            @"target": self.reactTag,
+                            @"seekableDuration": [self calculateSeekableDuration],
+                            });
+    }
+    if (_previousTime != currentTimeSecs) {
+     // video has progressed
+     _seeked = NO; // seeked has completed and video has enough data in buffer to play again
+    }
+    _previousTime = currentTimeSecs;
   }
 }
 
@@ -317,6 +332,7 @@ static int const RCTVideoUnset = -1;
   [_playerItem addObserver:self forKeyPath:statusKeyPath options:0 context:nil];
   [_playerItem addObserver:self forKeyPath:playbackBufferEmptyKeyPath options:0 context:nil];
   [_playerItem addObserver:self forKeyPath:playbackLikelyToKeepUpKeyPath options:0 context:nil];
+  [_playerItem addObserver:self forKeyPath:loadedTimeRangesKeyPath options:0 context:nil];
   [_playerItem addObserver:self forKeyPath:timedMetadata options:NSKeyValueObservingOptionNew context:nil];
   _playerItemObserversSet = YES;
 }
@@ -330,6 +346,7 @@ static int const RCTVideoUnset = -1;
     [_playerItem removeObserver:self forKeyPath:statusKeyPath];
     [_playerItem removeObserver:self forKeyPath:playbackBufferEmptyKeyPath];
     [_playerItem removeObserver:self forKeyPath:playbackLikelyToKeepUpKeyPath];
+    [_playerItem removeObserver:self forKeyPath:loadedTimeRangesKeyPath];
     [_playerItem removeObserver:self forKeyPath:timedMetadata];
     _playerItemObserversSet = NO;
   }
@@ -351,6 +368,7 @@ static int const RCTVideoUnset = -1;
       _playerItem = playerItem;
       [self addPlayerItemObservers];
       [self setFilter:_filterName];
+      [self setBufferConfig:_bufferConfig];
       [self setMaxBitRate:_maxBitRate];
       
       [_player pause];
@@ -689,6 +707,23 @@ static int const RCTVideoUnset = -1;
       }
       _playerBufferEmpty = NO;
       self.onVideoBuffer(@{@"isBuffering": @(NO), @"target": self.reactTag});
+    } else if ([keyPath isEqualToString:loadedTimeRangesKeyPath]) {
+      if (_bufferConfig) {
+        double buffered = [[self calculatePlayableDuration] doubleValue] - [[NSNumber numberWithFloat:CMTimeGetSeconds(_player.currentTime)] doubleValue];
+        double threshold = 0.0;
+        if (_bufferConfig[@"bufferForPlaybackAfterRebufferMs"]) {
+          double playbackAfterRebufferMs = [_bufferConfig[@"bufferForPlaybackAfterRebufferMs"] doubleValue];
+          threshold = playbackAfterRebufferMs / 1000; // default to playbackAfterRebufferMs
+        }
+        if ((!_playbackStarted || _seeked) && _bufferConfig[@"bufferForPlaybackMs"]) {
+          // video is yet to start playback, or user has interrupted video with a seek event
+          double bufferForPlaybackMs = [_bufferConfig[@"bufferForPlaybackMs"] doubleValue];
+          threshold = bufferForPlaybackMs / 1000; // bufferForPlaybackMs
+        }
+        if (threshold > 0.0 && buffered >= threshold && !_paused) {
+          [_player playImmediatelyAtRate:_rate];
+        }
+      }
     }
   } else if (object == _playerLayer) {
     if([keyPath isEqualToString:readyForDisplayKeyPath] && [change objectForKey:NSKeyValueChangeNewKey]) {
@@ -924,6 +959,7 @@ static int const RCTVideoUnset = -1;
         }
       }];
       
+      _seeked = YES;
       _pendingSeek = false;
     }
     
@@ -1025,6 +1061,10 @@ static int const RCTVideoUnset = -1;
   
     // If a match isn't found, option will be nil and text tracks will be disabled
     [_player.currentItem selectMediaOption:mediaOption inMediaSelectionGroup:group];
+}
+
+- (void)setBufferConfig:(NSDictionary *)bufferConfig {
+  _bufferConfig = bufferConfig;
 }
 
 - (void)setSelectedAudioTrack:(NSDictionary *)selectedAudioTrack {
