@@ -269,8 +269,10 @@ var styles = StyleSheet.create({
 * [id](#id)
 * [ignoreSilentSwitch](#ignoresilentswitch)
 * [maxBitRate](#maxbitrate)
+* [minLoadRetryCount](#minLoadRetryCount)
 * [muted](#muted)
 * [paused](#paused)
+* [pictureInPicture](#pictureinpicture)
 * [playInBackground](#playinbackground)
 * [playWhenInactive](#playwheninactive)
 * [poster](#poster)
@@ -300,14 +302,17 @@ var styles = StyleSheet.create({
 * [onFullscreenPlayerDidDismiss](#onfullscreenplayerdiddismiss)
 * [onLoad](#onload)
 * [onLoadStart](#onloadstart)
+* [onPictureInPictureStatusChanged](#onpictureinpicturestatuschanged)
 * [onProgress](#onprogress)
 * [onSeek](#onseek)
+* [onRestoreUserInterfaceForPictureInPictureStop](#onrestoreuserinterfaceforpictureinpicturestop)
 * [onTimedMetadata](#ontimedmetadata)
 
 ### Methods
 * [dismissFullscreenPlayer](#dismissfullscreenplayer)
 * [presentFullscreenPlayer](#presentfullscreenplayer)
 * [save](#save)
+* [restoreUserInterfaceForPictureInPictureStop](#restoreuserinterfaceforpictureinpicturestop)
 * [seek](#seek)
 
 ### Configurable props
@@ -359,9 +364,9 @@ Determines whether to show player controls.
 
 Note on iOS, controls are always shown when in fullscreen mode.
 
-Controls are not available Android because the system does not provide a stock set of controls. You will need to build your own or use a package like [react-native-video-controls](https://github.com/itsnubix/react-native-video-controls) or [react-native-video-player](https://github.com/cornedor/react-native-video-player).
+For Android MediaPlayer, you will need to build your own controls or use a package like [react-native-video-controls](https://github.com/itsnubix/react-native-video-controls) or [react-native-video-player](https://github.com/cornedor/react-native-video-player).
 
-Platforms: iOS, react-native-dom
+Platforms: Android ExoPlayer, iOS, react-native-dom
 
 #### filter
 Add video filter
@@ -475,6 +480,18 @@ maxBitRate={2000000} // 2 megabits
 
 Platforms: Android ExoPlayer, iOS
 
+#### minLoadRetryCount
+Sets the minimum number of times to retry loading data before failing and reporting an error to the application. Useful to recover from transient internet failures.
+
+Default: 3. Retry 3 times.
+
+Example:
+```
+minLoadRetryCount={5} // retry 5 times
+```
+
+Platforms: Android ExoPlayer
+
 #### muted
 Controls whether the audio is muted
 * **false (default)** - Don't mute audio
@@ -488,6 +505,13 @@ Controls whether the media is paused
 * **true** - Pause the media
 
 Platforms: all
+
+#### pictureInPicture
+Determine whether the media should played as picture in picture.
+* **false (default)** - Don't not play as picture in picture
+* **true** - Play the media as picture in picture
+
+Platforms: iOS
 
 #### playInBackground
 Determine whether the media should continue playing while the app is in the background. This allows customers to continue listening to the audio.
@@ -929,6 +953,22 @@ Example:
 
 Platforms: all
 
+#### onPictureInPictureStatusChanged
+Callback function that is called when picture in picture becomes active or inactive.
+
+Property | Type | Description
+--- | --- | ---
+isActive | boolean | Boolean indicating whether picture in picture is active
+
+Example:
+```
+{
+isActive: true
+}
+```
+
+Platforms:  iOS
+
 #### onProgress
 Callback function that is called every progressUpdateInterval seconds with info about which position the media is currently playing.
 
@@ -971,6 +1011,13 @@ Both the currentTime & seekTime are reported because the video player may not se
 
 
 Platforms: Android ExoPlayer, Android MediaPlayer, iOS, Windows UWP
+
+#### onRestoreUserInterfaceForPictureInPictureStop
+Callback function that corresponds to Apple's [`restoreUserInterfaceForPictureInPictureStopWithCompletionHandler`](https://developer.apple.com/documentation/avkit/avpictureinpicturecontrollerdelegate/1614703-pictureinpicturecontroller?language=objc). Call `restoreUserInterfaceForPictureInPictureStopCompleted` inside of this function when done restoring the user interface. 
+
+Payload: none
+
+Platforms: iOS
 
 #### onTimedMetadata
 Callback function that is called when timed metadata becomes available
@@ -1058,6 +1105,18 @@ Future:
  - Will support more formats in the future through options
  - Will support custom directory and file name through options
  
+Platforms: iOS
+
+#### restoreUserInterfaceForPictureInPictureStopCompleted
+`restoreUserInterfaceForPictureInPictureStopCompleted(restored)`
+
+This function corresponds to the completion handler in Apple's [restoreUserInterfaceForPictureInPictureStop](https://developer.apple.com/documentation/avkit/avpictureinpicturecontrollerdelegate/1614703-pictureinpicturecontroller?language=objc). IMPORTANT: This function must be called after `onRestoreUserInterfaceForPictureInPictureStop` is called. 
+
+Example:
+```
+this.player.restoreUserInterfaceForPictureInPictureStopCompleted(true);
+```
+
 Platforms: iOS
 
 #### seek()
