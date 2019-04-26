@@ -458,16 +458,8 @@ class ReactExoplayerView extends FrameLayout implements
 
         ds = enableCaching(ds);
 
-        String type = "default";
-
-        String[] formats = new String[]{"dash", "hls", "smoothstreaming"};
-
-        // Convert String Array to List
-        List<String> list = Arrays.asList(formats);
-        System.out.println(overrideExtension);
-        if(list.contains(overrideExtension)){
-            type = overrideExtension;
-        }
+        int type = Util.inferContentType(!TextUtils.isEmpty(overrideExtension) ? "." + overrideExtension
+                : uri.getLastPathSegment());
 
         switch (type) {
             case C.TYPE_SS:
@@ -486,6 +478,9 @@ class ReactExoplayerView extends FrameLayout implements
             case C.TYPE_OTHER:
                 return new ExtractorMediaSource(uri, mediaDataSourceFactory, new DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true),
                         mainHandler, null);
+            default: {
+                throw new IllegalStateException("Unsupported type: " + type);
+            }
         }
     }
 
