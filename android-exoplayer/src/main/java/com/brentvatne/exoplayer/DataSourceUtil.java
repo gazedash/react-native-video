@@ -22,7 +22,6 @@ import java.util.Map;
 import android.net.Uri;
 import com.danikula.videocache.HttpProxyCacheServer;
 
-
 public class DataSourceUtil {
 
     private DataSourceUtil() {
@@ -31,7 +30,7 @@ public class DataSourceUtil {
     private static DataSource.Factory rawDataSourceFactory = null;
     private static DataSource.Factory defaultDataSourceFactory = null;
     private static String userAgent = null;
-     private static HttpProxyCacheServer proxy = null;
+    private static HttpProxyCacheServer proxy = null;
 
     public static void setUserAgent(String userAgent) {
         DataSourceUtil.userAgent = userAgent;
