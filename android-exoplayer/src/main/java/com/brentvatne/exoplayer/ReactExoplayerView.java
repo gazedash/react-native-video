@@ -458,29 +458,30 @@ class ReactExoplayerView extends FrameLayout implements
 
         ds = enableCaching(ds);
 
-        int type = Util.inferContentType(!TextUtils.isEmpty(overrideExtension) ? "." + overrideExtension
-                : uri.getLastPathSegment());
+        String type = "default";
+
+        String[] formats = new String[]{"dash", "hls", "smoothstreaming"};
+
+        // Convert String Array to List
+        List<String> list = Arrays.asList(formats);
+        System.out.println(overrideExtension);
+        if(list.contains(overrideExtension)){
+            type = overrideExtension;
+        }
 
         switch (type) {
-            case C.TYPE_SS:
-                return new SsMediaSource(uri, buildDataSourceFactory(false),
-                        new DefaultSsChunkSource.Factory(mediaDataSourceFactory), 
-                        minLoadRetryCount, SsMediaSource.DEFAULT_LIVE_PRESENTATION_DELAY_MS, 
-                        mainHandler, null);
-            case C.TYPE_DASH:
-                return new DashMediaSource(uri, buildDataSourceFactory(false),
-                        new DefaultDashChunkSource.Factory(mediaDataSourceFactory), 
-                        minLoadRetryCount, DashMediaSource.DEFAULT_LIVE_PRESENTATION_DELAY_MS,
-                        mainHandler, null);
-            case C.TYPE_HLS:
-                return new HlsMediaSource(uri, mediaDataSourceFactory, 
-                        minLoadRetryCount, mainHandler, null);
-            case C.TYPE_OTHER:
+            case "smoothstreaming":
+                return new SsMediaSource.Factory(new DefaultSsChunkSource.Factory(ds), ds)
+                        .createMediaSource(uri);
+            case "dash":
+            return new DashMediaSource.Factory(new DefaultDashChunkSource.Factory(ds), ds)
+                        .createMediaSource(uri);
+            case "hls":
+            return new HlsMediaSource.Factory(ds)
+                        .createMediaSource(uri);
+            default:
                 return new ExtractorMediaSource(uri, mediaDataSourceFactory, new DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true),
                         mainHandler, null);
-            default: {
-                throw new IllegalStateException("Unsupported type: " + type);
-            }
         }
     }
 

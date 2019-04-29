@@ -113,6 +113,9 @@ static int const RCTVideoUnset = -1;
     _allowsExternalPlayback = YES;
     _playWhenInactive = false;
     _pictureInPicture = false;
+    _playbackStarted = NO;
+    _seeked = NO;
+    _previousTime = 0.0;
     _ignoreSilentSwitch = @"inherit"; // inherit, ignore, obey
 #if TARGET_OS_IOS
     _restoreUserInterfaceForPIPStopCompletionHandler = NULL;
